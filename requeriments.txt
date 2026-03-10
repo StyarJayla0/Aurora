@@ -1,8 +1,18 @@
-openai
-streamlit
-langchain-community
-langchain-text-splitters
-faiss-cpu
-pypdf
-sentence-transformers
-streamlit-mic-recorder
+# Core dependencies
+streamlit>=1.28.0
+openai>=1.0.0
+
+# LangChain dependencies
+langchain-community>=0.0.20
+langchain-text-splitters>=0.0.1
+langchain-core>=0.1.0
+
+# Vector store and embeddings
+faiss-cpu>=1.7.4
+sentence-transformers>=2.2.0
+
+# PDF processing
+pypdf>=3.0.0
+
+# Audio recording (optional - may not work on Streamlit Cloud)
+# streamlit-mic-recorder
