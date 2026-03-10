@@ -3,11 +3,19 @@ from openai import OpenAI
 import os
 import glob
 import streamlit.components.v1 as components
-from streamlit_mic_recorder import mic_recorder
 import io
 import zipfile
 
-# IMPORTACIONES PARA LANGCHAIN
+# CONFIGURACIÓN DE PÁGINA - DEBE SER LO PRIMERO
+st.set_page_config(
+    page_title="IA Prometeo",
+    page_icon="🔥",
+    layout="wide",
+    initial_sidebar_state="expanded",
+    menu_items={'Get Help': None, 'Report a bug': None, 'About': "IA Prometeo - Asistente Inteligente"}
+)
+
+# IMPORTACIONES PARA LANGCHAIN (después de set_page_config)
 try:
     from langchain_community.document_loaders import PyPDFLoader
     from langchain_community.vectorstores import FAISS
@@ -17,12 +25,21 @@ except ImportError:
     st.error("Faltan librerías. Instala con: pip install langchain-community langchain-text-splitters faiss-cpu pypdf sentence-transformers")
     st.stop()
 
+# Importar mic_recorder con manejo de error
+try:
+    from streamlit_mic_recorder import mic_recorder
+    MIC_RECORDER_AVAILABLE = True
+except ImportError:
+    MIC_RECORDER_AVAILABLE = False
+    st.warning("⚠️ streamlit_mic_recorder no está instalado. Funcionalidad de voz deshabilitada.")
+
 # ═══════════════════════════════════════════════════════════════
-# CONFIGURACIÓN DE CARPETA (RUTA ABSOLUTA)
+# CONFIGURACIÓN DE CARPETA
 # ═══════════════════════════════════════════════════════════════
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DOCS_FOLDER = os.path.join(BASE_DIR, "documentos")
 
+@st.cache_resource
 def load_knowledge_base():
     if not os.path.exists(DOCS_FOLDER):
         try:
@@ -72,17 +89,8 @@ def load_knowledge_base():
         st.error(f"Error al procesar embeddings: {e}")
         return None, []
 
-# CONFIGURACIÓN DE PÁGINA
-st.set_page_config(
-    page_title="IA Prometeo",
-    page_icon="🔥",
-    layout="wide",
-    initial_sidebar_state="expanded",
-    menu_items={'Get Help': None, 'Report a bug': None, 'About': "IA Prometeo - Asistente Inteligente"}
-)
-
 # ═══════════════════════════════════════════════════════════════
-# CSS NEUTRO Y PROFESIONAL (LISTO PARA EDITAR)
+# CSS NEUTRO Y PROFESIONAL
 # ═══════════════════════════════════════════════════════════════
 css_neutral = """
 <style>
@@ -95,13 +103,13 @@ css_neutral = """
     [data-testid="stDecoration"] {display: none;}
     [data-testid="stToolbar"] {display: none;}
     
-    /* VARIABLES DE COLOR (FÁCIL DE EDITAR) */
+    /* VARIABLES DE COLOR */
     :root {
-        --primary-color: #4F46E5;       /* Índigo */
-        --secondary-color: #6366F1;     /* Índigo claro */
-        --bg-color: #F3F4F6;            /* Gris muy claro */
-        --sidebar-bg: #FFFFFF;          /* Blanco */
-        --text-color: #1F2937;          /* Gris oscuro */
+        --primary-color: #4F46E5;
+        --secondary-color: #6366F1;
+        --bg-color: #F3F4F6;
+        --sidebar-bg: #FFFFFF;
+        --text-color: #1F2937;
         --accent-color: #4F46E5;
     }
 
@@ -285,20 +293,14 @@ header_html = """
 st.markdown(header_html, unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════════
-# ZONA DE CONTENIDO (LIMPIA)
-# ═══════════════════════════════════════════════════════════════
-# Aquí puedes agregar videos, imágenes o enlaces usando st.video, st.image, st.link_button
-# Ejemplo:
-# st.markdown("<div class='content-card'>", unsafe_allow_html=True)
-# st.video("URL_DE_TU_VIDEO")
-# st.markdown("</div>", unsafe_allow_html=True)
-
-# ═══════════════════════════════════════════════════════════════
 # CONFIGURACIÓN DE API KEY
 # ═══════════════════════════════════════════════════════════════
 api_key = None
-if "groq" in st.secrets and "api_key" in st.secrets["groq"]:
-    api_key = st.secrets["groq"]["api_key"]
+try:
+    if "groq" in st.secrets and "api_key" in st.secrets["groq"]:
+        api_key = st.secrets["groq"]["api_key"]
+except:
+    pass  # No hay secrets.toml configurado
 
 # ═══════════════════════════════════════════════════════════════
 # SIDEBAR
@@ -356,7 +358,6 @@ with st.sidebar:
 
     st.markdown("---")
     
-    # Sección neutral lista para editar
     st.markdown("#### 💡 Tips")
     st.markdown('<div class="info-card">Puedes preguntarme sobre los documentos cargados o pedir ayuda para planear clases.</div>', unsafe_allow_html=True)
 
@@ -451,7 +452,6 @@ if "vectorstore" not in st.session_state:
 
 def get_audio_button_html(text, key):
     text_clean = text.replace("'", "").replace('"', '').replace("\n", " ")
-    # Botón neutro para voz
     return f"""
     <div style="margin-top: 10px; text-align: right;">
         <button onclick="
@@ -534,106 +534,20 @@ def get_context_for_planning(user_input, vectorstore, loaded_files):
 
 audio_data = None
 
-st.markdown("<div class='mic-container-top'>", unsafe_allow_html=True)
-try:
-    audio_data = mic_recorder(
-        start_prompt="🎤 Iniciar Grabación",
-        stop_prompt="🛑 Detener Grabación",
-        just_once=False,
-        key="mic_main_btn"
-    )
-except Exception as e:
-    pass
-st.markdown("</div>", unsafe_allow_html=True)
+if MIC_RECORDER_AVAILABLE:
+    st.markdown("<div class='mic-container-top'>", unsafe_allow_html=True)
+    try:
+        audio_data = mic_recorder(
+            start_prompt="🎤 Iniciar Grabación",
+            stop_prompt="🛑 Detener Grabación",
+            just_once=False,
+            key="mic_main_btn"
+        )
+    except Exception as e:
+        st.warning(f"Error con micrófono: {e}")
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # Procesar audio
 if audio_data:
     try:
-        audio_bytes = audio_data['bytes']
-        audio_file = io.BytesIO(audio_bytes)
-        audio_file.name = f"audio.{audio_data['format']}"
-
-        transcription = client.audio.transcriptions.create(
-            file=audio_file,
-            model="whisper-large-v3",
-            language="es"
-        )
-        if transcription.text:
-            st.toast(f"🎤 Escuché: {transcription.text}")
-            prompt = transcription.text
-            st.session_state.messages.append({"role": "user", "content": prompt})
-            
-            if "vamos a planear" in prompt.lower():
-                st.session_state.planning_mode = True
-                st.toast("📑 Modo Planeación Activado")
-
-            current_prompt = SYSTEM_PROMPT_PLANNING if st.session_state.planning_mode else SYSTEM_PROMPT_BASE
-            
-            context_text = ""
-            if st.session_state.get("vectorstore"):
-                context_text, _ = get_context_for_planning(prompt, st.session_state.vectorstore, st.session_state.loaded_files)
-
-            full_prompt = current_prompt
-            if context_text:
-                full_prompt += f"\n\nContexto de documentos:\n{context_text}"
-
-            formatted_messages = [{"role": "system", "content": full_prompt}] + [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
-
-            response = client.chat.completions.create(
-                model="llama-3.1-8b-instant", 
-                messages=formatted_messages
-            )
-
-            ai_response = response.choices[0].message.content
-            st.session_state.messages.append({"role": "assistant", "content": ai_response})
-
-    except Exception as e:
-        st.error(f"Error de audio: {e}")
-
-# Input de chat
-if prompt := st.chat_input("Escribe tu mensaje..."):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-
-    if "vamos a planear" in prompt.lower():
-        st.session_state.planning_mode = True
-        st.toast("📑 Modo Planeación Activado")
-
-    current_prompt = SYSTEM_PROMPT_PLANNING if st.session_state.planning_mode else SYSTEM_PROMPT_BASE
-
-    context_text = ""
-    if st.session_state.get("vectorstore"):
-        context_text, _ = get_context_for_planning(prompt, st.session_state.vectorstore, st.session_state.loaded_files)
-
-    full_prompt = current_prompt
-    if context_text:
-        full_prompt += f"\n\nContexto de documentos:\n{context_text}"
-
-    formatted_messages = [{"role": "system", "content": full_prompt}] + [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
-
-    try:
-        response = client.chat.completions.create(
-            model="llama-3.1-8b-instant", 
-            messages=formatted_messages
-        )
-        ai_response = response.choices[0].message.content
-        st.session_state.messages.append({"role": "assistant", "content": ai_response})
-    except Exception as e:
-        st.error(f"Error: {e}")
-
-# Contenedor de chat
-st.markdown("<div class='fixed-chat-wrapper'>", unsafe_allow_html=True)
-chat_container = st.container(height=450, key="chat_container")
-
-with chat_container:
-    for i, message in enumerate(st.session_state.messages):
-        if message["role"] != "system":
-            avatar = "🔥" if message["role"] == "assistant" else "👤"
-            with st.chat_message(message["role"], avatar=avatar):
-                st.markdown(message["content"])
-                if message["role"] == "assistant" and voice_enabled:
-                    components.html(
-                        get_audio_button_html(message["content"], f"audio_{i}"),
-                        height=50,
-                    )
-
-st.markdown("</div>", unsafe_allow_html=True)
+        audio_bytes = audio_data['bytes
