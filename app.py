@@ -15,7 +15,7 @@ st.set_page_config(
     menu_items={'Get Help': None, 'Report a bug': None, 'About': "IA Prometeo - Asistente Inteligente"}
 )
 
-# IMPORTACIONES PARA LANGCHAIN (después de set_page_config)
+# IMPORTACIONES PARA LANGCHAIN
 try:
     from langchain_community.document_loaders import PyPDFLoader
     from langchain_community.vectorstores import FAISS
@@ -25,17 +25,12 @@ except ImportError:
     st.error("Faltan librerías. Instala con: pip install langchain-community langchain-text-splitters faiss-cpu pypdf sentence-transformers")
     st.stop()
 
-# Importar mic_recorder con manejo de error
 try:
     from streamlit_mic_recorder import mic_recorder
     MIC_RECORDER_AVAILABLE = True
 except ImportError:
     MIC_RECORDER_AVAILABLE = False
-    st.warning("⚠️ streamlit_mic_recorder no está instalado. Funcionalidad de voz deshabilitada.")
 
-# ═══════════════════════════════════════════════════════════════
-# CONFIGURACIÓN DE CARPETA
-# ═══════════════════════════════════════════════════════════════
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DOCS_FOLDER = os.path.join(BASE_DIR, "documentos")
 
@@ -74,7 +69,7 @@ def load_knowledge_base():
             error_files.append((os.path.basename(pdf_path), str(e)))
 
     if error_files:
-        st.warning(f"⚠️ No se pudieron leer {len(error_files)} archivos.")
+        st.warning(f"No se pudieron leer {len(error_files)} archivos.")
 
     if not all_docs: 
         return None, []
@@ -89,48 +84,31 @@ def load_knowledge_base():
         st.error(f"Error al procesar embeddings: {e}")
         return None, []
 
-# ═══════════════════════════════════════════════════════════════
-# CSS NEUTRO Y PROFESIONAL
-# ═══════════════════════════════════════════════════════════════
+# CSS
 css_neutral = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
-    /* OCULTAR ELEMENTOS STREAMLIT POR DEFECTO */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
     [data-testid="stDecoration"] {display: none;}
     [data-testid="stToolbar"] {display: none;}
-    
-    /* VARIABLES DE COLOR */
     :root {
         --primary-color: #4F46E5;
         --secondary-color: #6366F1;
         --bg-color: #F3F4F6;
         --sidebar-bg: #FFFFFF;
         --text-color: #1F2937;
-        --accent-color: #4F46E5;
     }
-
-    /* FONDO GENERAL */
     .stApp {
         background-color: var(--bg-color);
         color: var(--text-color);
         font-family: 'Inter', sans-serif;
     }
-
-    section[data-testid="stMain"] {
-        position: relative;
-        z-index: 1 !important;
-    }
-    
-    /* HEADER */
     .main-header {
         text-align: center;
         padding: 2rem 1rem 1rem 1rem;
     }
-    
     .main-title {
         font-family: 'Inter', sans-serif;
         font-weight: 700;
@@ -138,71 +116,27 @@ css_neutral = """
         color: var(--primary-color);
         margin-bottom: 0.5rem;
     }
-    
     .subtitle {
         font-family: 'Inter', sans-serif;
         color: #6B7280;
         font-size: 1rem;
         font-weight: 400;
     }
-
-    /* CONTENEDOR PRINCIPAL */
     .content-card {
         background: #FFFFFF;
         border-radius: 16px;
         padding: 1.5rem;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         margin-bottom: 1rem;
         border: 1px solid #E5E7EB;
     }
-
-    /* BOTONES */
-    div[data-testid="stLinkButton"] button {
-        background-color: var(--primary-color) !important;
-        color: white !important;
-        border: none !important;
-        border-radius: 12px !important;
-        padding: 0.6rem 1.2rem !important;
-        font-weight: 500 !important;
-        transition: all 0.2s ease !important;
-    }
-
-    div[data-testid="stLinkButton"] button:hover {
-        background-color: var(--secondary-color) !important;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
-    }
-
-    /* MIC BUTTON TOP */
-    .mic-container-top {
-        display: flex;
-        justify-content: center;
-        margin: 1rem auto;
-    }
-    
-    .st-key-mic_main_btn button {
-        background-color: var(--primary-color) !important;
-        color: white !important;
-        border-radius: 50px !important;
-        padding: 0.8rem 1.5rem !important;
-        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
-    }
-
-    /* CHAT CONTENEDOR */
     .fixed-chat-wrapper {
         background: #FFFFFF;
         border: 1px solid #E5E7EB;
         border-radius: 16px;
         padding: 1.5rem;
         margin-bottom: 1rem;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
     }
-
-    .st-key-chat_container > div > div {
-        border: none !important;
-        background: transparent !important;
-    }
-
     [data-testid="stChatMessage"] {
         background: #F9FAFB;
         border: 1px solid #E5E7EB;
@@ -210,65 +144,15 @@ css_neutral = """
         padding: 1rem;
         margin-bottom: 0.8rem;
     }
-    
-    [data-testid="stChatMessageContent"] {
-        color: var(--text-color) !important;
-    }
-
-    /* INPUT CHAT */
-    [data-testid="stChatInput"] {
-        border: 1px solid #D1D5DB !important;
-        border-radius: 16px !important;
-        background-color: #FFFFFF !important;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }
-    
-    [data-testid="stChatInput"] textarea,
-    [data-testid="stChatInputTextArea"] {
-        background-color: transparent !important;
-        color: var(--text-color) !important;
-    }
-    
-    [data-testid="stChatInput"] textarea::placeholder,
-    [data-testid="stChatInputTextArea"]::placeholder {
-        color: #9CA3AF !important;
-    }
-
-    [data-testid="stChatInput"] button {
-        background-color: var(--primary-color) !important;
-        color: white !important;
-    }
-
-    /* SIDEBAR */
     [data-testid="stSidebar"] {
         background: var(--sidebar-bg) !important;
         border-right: 1px solid #E5E7EB;
     }
-    
-    [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
-        color: var(--primary-color) !important;
-        font-family: 'Inter', sans-serif !important;
-    }
-
     .stButton button {
         background-color: var(--primary-color) !important;
         color: white !important;
         border-radius: 10px !important;
     }
-
-    .stAlert {
-        background: #FFFFFF !important;
-        border-left: 4px solid var(--primary-color) !important;
-        border-radius: 8px !important;
-        color: var(--text-color) !important;
-    }
-
-    /* SCROLLBAR */
-    ::-webkit-scrollbar { width: 8px; }
-    ::-webkit-scrollbar-track { background: #F3F4F6; }
-    ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
-    
-    /* UTILIDADES */
     .info-card {
         background: #EFF6FF;
         border: 1px solid #BFDBFE;
@@ -281,9 +165,6 @@ css_neutral = """
 """
 st.markdown(css_neutral, unsafe_allow_html=True)
 
-# ═══════════════════════════════════════════════════════════════
-# HEADER
-# ═══════════════════════════════════════════════════════════════
 header_html = """
 <div class="main-header">
     <h1 class="main-title">IA PROMETEO 🔥</h1>
@@ -292,22 +173,17 @@ header_html = """
 """
 st.markdown(header_html, unsafe_allow_html=True)
 
-# ═══════════════════════════════════════════════════════════════
-# CONFIGURACIÓN DE API KEY
-# ═══════════════════════════════════════════════════════════════
+# API KEY
 api_key = None
 try:
     if "groq" in st.secrets and "api_key" in st.secrets["groq"]:
         api_key = st.secrets["groq"]["api_key"]
 except:
-    pass  # No hay secrets.toml configurado
+    pass
 
-# ═══════════════════════════════════════════════════════════════
 # SIDEBAR
-# ═══════════════════════════════════════════════════════════════
 with st.sidebar:
     st.markdown("<h2>⚙️ Panel de Control</h2>", unsafe_allow_html=True)
-    
     st.markdown("#### 🔑 Configuración")
     if not api_key:
         api_key_input = st.text_input("API Key de Groq", type="password", key="api_key_input_groq")
@@ -321,10 +197,8 @@ with st.sidebar:
     
     voice_enabled = st.checkbox("Activar respuestas de voz", value=True)
     st.markdown("---")
-
-    # Lógica de carga de archivos
     st.markdown("#### 📦 Base de Conocimiento")
-    st.caption(f"Carpeta: `documentos/`")
+    st.caption("Carpeta: `documentos/`")
     
     uploaded_zip = st.file_uploader("Sube un ZIP con PDFs", type="zip", key="zip_uploader")
 
@@ -334,14 +208,13 @@ with st.sidebar:
                 with zipfile.ZipFile(uploaded_zip, 'r') as z:
                     z.extractall(DOCS_FOLDER)
                 st.session_state.processed_zip_name = uploaded_zip.name
-                st.toast(f"✅ Archivos extraídos. Recargando...")
+                st.toast("✅ Archivos extraídos. Recargando...")
                 st.cache_resource.clear()
                 st.rerun()
             except Exception as e:
                 st.error(f"Error al descomprimir: {e}")
 
     st.markdown("---")
-
     st.markdown("#### 📚 Estado")
     
     if st.button("🔄 Recargar Base de Datos", use_container_width=True):
@@ -354,13 +227,11 @@ with st.sidebar:
             for f in st.session_state.loaded_files:
                 st.write(f"📄 {f}")
     else:
-        st.info(f"🔴 Repositorio Vacío. Añade PDFs.")
+        st.info("🔴 Repositorio Vacío. Añade PDFs.")
 
     st.markdown("---")
-    
     st.markdown("#### 💡 Tips")
     st.markdown('<div class="info-card">Puedes preguntarme sobre los documentos cargados o pedir ayuda para planear clases.</div>', unsafe_allow_html=True)
-
     st.markdown("<br><p style='text-align:center; font-size:0.8rem; color:#9CA3AF;'>Desarrollado por IA Prometeo</p>", unsafe_allow_html=True)
 
 if not api_key:
@@ -375,9 +246,7 @@ except Exception as e:
     st.error(f"Error al conectar con Groq: {e}")
     st.stop()
 
-# ═══════════════════════════════════════════════════════════════
-# PERSONALIDAD Y MODO PLANEACIÓN
-# ═══════════════════════════════════════════════════════════════
+# PROMPTS
 SYSTEM_PROMPT_BASE = """
 Eres **IA Prometeo**, un asistente inteligente, conciso y profesional.
 Tu objetivo es ayudar al usuario a analizar documentos y realizar tareas de planeación o consulta.
@@ -401,7 +270,6 @@ Eres **IA Prometeo - Experto en Planeación**.
 3. Si no tienes información, indícalo.
 
 **FLUJO:**
-
 **PASO 1: ACTIVACIÓN**
 Si el usuario dice "vamos a planear":
 1. Muestra la lista de archivos.
@@ -432,9 +300,7 @@ Genera ejemplos.
 Genera planeación completa.
 """
 
-# ═══════════════════════════════════════════════════════════════
-# INICIALIZACIÓN DE SESIÓN Y BASE DE DATOS
-# ═══════════════════════════════════════════════════════════════
+# INICIALIZACIÓN
 if "messages" not in st.session_state: 
     st.session_state.messages = []
 
@@ -446,10 +312,7 @@ if "vectorstore" not in st.session_state:
     st.session_state.vectorstore = vectorstore
     st.session_state.loaded_files = loaded_files
 
-# ═══════════════════════════════════════════════════════════════
-# FUNCIONES AUXILIARES
-# ═══════════════════════════════════════════════════════════════
-
+# FUNCIONES
 def get_audio_button_html(text, key):
     text_clean = text.replace("'", "").replace('"', '').replace("\n", " ")
     return f"""
@@ -487,31 +350,19 @@ def get_context_for_planning(user_input, vectorstore, loaded_files):
 
     if selected_file_index is not None:
         target_filename = loaded_files[selected_file_index]
-        
-        structure_queries = [
-            "Unidades de aprendizaje", 
-            "Contenido temático desglosado", 
-            "Bloques Módulos Temas",
-            "Índice de contenidos estructura"
-        ]
-        
+        structure_queries = ["Unidades de aprendizaje", "Contenido temático desglosado", "Bloques Módulos Temas", "Índice de contenidos estructura"]
         all_docs = []
         seen_content = set()
         
         try:
             for query in structure_queries:
-                docs = vectorstore.similarity_search(
-                    query=query, 
-                    k=4, 
-                    filter={"source": target_filename}
-                )
+                docs = vectorstore.similarity_search(query=query, k=4, filter={"source": target_filename})
                 for doc in docs:
                     if doc.page_content not in seen_content:
                         all_docs.append(doc)
                         seen_content.add(doc.page_content)
             
             final_docs = all_docs[:12]
-            
             if not final_docs:
                 return f"No se encontró información estructural en {target_filename}.", target_filename
             
@@ -528,14 +379,10 @@ def get_context_for_planning(user_input, vectorstore, loaded_files):
         except Exception as e:
             return "", None
 
-# ═══════════════════════════════════════════════════════════════
-# INTERFAZ DE CHAT
-# ═══════════════════════════════════════════════════════════════
-
+# CHAT INTERFACE
 audio_data = None
 
 if MIC_RECORDER_AVAILABLE:
-    st.markdown("<div class='mic-container-top'>", unsafe_allow_html=True)
     try:
         audio_data = mic_recorder(
             start_prompt="🎤 Iniciar Grabación",
@@ -544,10 +391,96 @@ if MIC_RECORDER_AVAILABLE:
             key="mic_main_btn"
         )
     except Exception as e:
-        st.warning(f"Error con micrófono: {e}")
-    st.markdown("</div>", unsafe_allow_html=True)
+        pass
 
-# Procesar audio
+# PROCESAR AUDIO
 if audio_data:
     try:
-        audio_bytes = audio_data['bytes
+        audio_bytes = audio_data['bytes']
+        audio_file = io.BytesIO(audio_bytes)
+        audio_file.name = f"audio.{audio_data['format']}"
+
+        transcription = client.audio.transcriptions.create(
+            file=audio_file,
+            model="whisper-large-v3-turbo",
+            language="es"
+        )
+        if transcription.text:
+            st.toast(f"🎤 Escuché: {transcription.text}")
+            prompt = transcription.text
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            
+            if "vamos a planear" in prompt.lower():
+                st.session_state.planning_mode = True
+                st.toast("📑 Modo Planeación Activado")
+
+            current_prompt = SYSTEM_PROMPT_PLANNING if st.session_state.planning_mode else SYSTEM_PROMPT_BASE
+            
+            context_text = ""
+            if st.session_state.get("vectorstore"):
+                context_text, _ = get_context_for_planning(prompt, st.session_state.vectorstore, st.session_state.loaded_files)
+
+            full_prompt = current_prompt
+            if context_text:
+                full_prompt += f"\n\nContexto de documentos:\n{context_text}"
+
+            formatted_messages = [{"role": "system", "content": full_prompt}] + [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
+
+            response = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=formatted_messages
+            )
+
+            ai_response = response.choices[0].message.content
+            st.session_state.messages.append({"role": "assistant", "content": ai_response})
+
+    except Exception as e:
+        st.error(f"Error de audio: {e}")
+
+# INPUT DE CHAT
+if prompt := st.chat_input("Escribe tu mensaje..."):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+
+    if "vamos a planear" in prompt.lower():
+        st.session_state.planning_mode = True
+        st.toast("📑 Modo Planeación Activado")
+
+    current_prompt = SYSTEM_PROMPT_PLANNING if st.session_state.planning_mode else SYSTEM_PROMPT_BASE
+
+    context_text = ""
+    if st.session_state.get("vectorstore"):
+        context_text, _ = get_context_for_planning(prompt, st.session_state.vectorstore, st.session_state.loaded_files)
+
+    full_prompt = current_prompt
+    if context_text:
+        full_prompt += f"\n\nContexto de documentos:\n{context_text}"
+
+    formatted_messages = [{"role": "system", "content": full_prompt}] + [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
+
+    try:
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=formatted_messages
+        )
+        ai_response = response.choices[0].message.content
+        st.session_state.messages.append({"role": "assistant", "content": ai_response})
+    except Exception as e:
+        st.error(f"Error: {e}")
+
+# CONTENEDOR DE CHAT
+st.markdown("<div class='fixed-chat-wrapper'>", unsafe_allow_html=True)
+chat_container = st.container(height=450, key="chat_container")
+
+with chat_container:
+    for i, message in enumerate(st.session_state.messages):
+        if message["role"] != "system":
+            avatar = "🔥" if message["role"] == "assistant" else "👤"
+            with st.chat_message(message["role"], avatar=avatar):
+                st.markdown(message["content"])
+                if message["role"] == "assistant" and voice_enabled:
+                    components.html(
+                        get_audio_button_html(message["content"], f"audio_{i}"),
+                        height=50,
+                    )
+
+st.markdown("</div>", unsafe_allow_html=True)
