@@ -1,12 +1,12 @@
 import streamlit as st
-from openai import openai
+from openai import OpenAI
 import os
 import glob
 import streamlit.components.v1 as components
 import io
 import zipfile
 
-# CONFIGURACIÓN DE PÁGINA - DEBE SER LO PRIMERO
+# CONFIGURACION DE PAGINA - DEBE SER LO PRIMERO
 st.set_page_config(
     page_title="IA Prometeo",
     page_icon="🔥",
@@ -22,18 +22,21 @@ try:
     from langchain_community.embeddings import HuggingFaceEmbeddings
     from langchain_text_splitters import RecursiveCharacterTextSplitter
 except ImportError:
-    st.error("Faltan librerías. Instala con: pip install langchain-community langchain-text-splitters faiss-cpu pypdf sentence-transformers")
+    st.error("Faltan librerias. Instala con: pip install langchain-community langchain-text-splitters faiss-cpu pypdf sentence-transformers")
     st.stop()
 
+# IMPORTAR MIC RECORDER CON MANEJO DE ERROR
 try:
     from streamlit_mic_recorder import mic_recorder
     MIC_RECORDER_AVAILABLE = True
 except ImportError:
     MIC_RECORDER_AVAILABLE = False
 
+# CONFIGURACION DE CARPETA
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DOCS_FOLDER = os.path.join(BASE_DIR, "documentos")
 
+# FUNCION PARA CARGAR BASE DE CONOCIMIENTO
 @st.cache_resource
 def load_knowledge_base():
     if not os.path.exists(DOCS_FOLDER):
@@ -84,15 +87,17 @@ def load_knowledge_base():
         st.error(f"Error al procesar embeddings: {e}")
         return None, []
 
-# CSS
+# CSS NEUTRO Y PROFESIONAL
 css_neutral = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
     [data-testid="stDecoration"] {display: none;}
     [data-testid="stToolbar"] {display: none;}
+    
     :root {
         --primary-color: #4F46E5;
         --secondary-color: #6366F1;
@@ -100,15 +105,23 @@ css_neutral = """
         --sidebar-bg: #FFFFFF;
         --text-color: #1F2937;
     }
+
     .stApp {
         background-color: var(--bg-color);
         color: var(--text-color);
         font-family: 'Inter', sans-serif;
     }
+
+    section[data-testid="stMain"] {
+        position: relative;
+        z-index: 1 !important;
+    }
+    
     .main-header {
         text-align: center;
         padding: 2rem 1rem 1rem 1rem;
     }
+    
     .main-title {
         font-family: 'Inter', sans-serif;
         font-weight: 700;
@@ -116,27 +129,53 @@ css_neutral = """
         color: var(--primary-color);
         margin-bottom: 0.5rem;
     }
+    
     .subtitle {
         font-family: 'Inter', sans-serif;
         color: #6B7280;
         font-size: 1rem;
         font-weight: 400;
     }
+
     .content-card {
         background: #FFFFFF;
         border-radius: 16px;
         padding: 1.5rem;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         margin-bottom: 1rem;
         border: 1px solid #E5E7EB;
     }
+
+    div[data-testid="stLinkButton"] button {
+        background-color: var(--primary-color) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 12px !important;
+        padding: 0.6rem 1.2rem !important;
+        font-weight: 500 !important;
+        transition: all 0.2s ease !important;
+    }
+
+    div[data-testid="stLinkButton"] button:hover {
+        background-color: var(--secondary-color) !important;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+    }
+
     .fixed-chat-wrapper {
         background: #FFFFFF;
         border: 1px solid #E5E7EB;
         border-radius: 16px;
         padding: 1.5rem;
         margin-bottom: 1rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
     }
+
+    .st-key-chat_container > div > div {
+        border: none !important;
+        background: transparent !important;
+    }
+
     [data-testid="stChatMessage"] {
         background: #F9FAFB;
         border: 1px solid #E5E7EB;
@@ -144,15 +183,61 @@ css_neutral = """
         padding: 1rem;
         margin-bottom: 0.8rem;
     }
+    
+    [data-testid="stChatMessageContent"] {
+        color: var(--text-color) !important;
+    }
+
+    [data-testid="stChatInput"] {
+        border: 1px solid #D1D5DB !important;
+        border-radius: 16px !important;
+        background-color: #FFFFFF !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    
+    [data-testid="stChatInput"] textarea,
+    [data-testid="stChatInputTextArea"] {
+        background-color: transparent !important;
+        color: var(--text-color) !important;
+    }
+    
+    [data-testid="stChatInput"] textarea::placeholder,
+    [data-testid="stChatInputTextArea"]::placeholder {
+        color: #9CA3AF !important;
+    }
+
+    [data-testid="stChatInput"] button {
+        background-color: var(--primary-color) !important;
+        color: white !important;
+    }
+
     [data-testid="stSidebar"] {
         background: var(--sidebar-bg) !important;
         border-right: 1px solid #E5E7EB;
     }
+    
+    [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
+        color: var(--primary-color) !important;
+        font-family: 'Inter', sans-serif !important;
+    }
+
     .stButton button {
         background-color: var(--primary-color) !important;
         color: white !important;
         border-radius: 10px !important;
     }
+
+    .stAlert {
+        background: #FFFFFF !important;
+        border-left: 4px solid var(--primary-color) !important;
+        border-radius: 8px !important;
+        color: var(--text-color) !important;
+    }
+
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #F3F4F6; }
+    ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+    
     .info-card {
         background: #EFF6FF;
         border: 1px solid #BFDBFE;
@@ -165,15 +250,16 @@ css_neutral = """
 """
 st.markdown(css_neutral, unsafe_allow_html=True)
 
+# HEADER
 header_html = """
 <div class="main-header">
     <h1 class="main-title">IA PROMETEO 🔥</h1>
-    <p class="subtitle">Tu asistente inteligente para documentos y planeación</p>
+    <p class="subtitle">Tu asistente inteligente para documentos y planeacion</p>
 </div>
 """
 st.markdown(header_html, unsafe_allow_html=True)
 
-# API KEY
+# CONFIGURACION DE API KEY
 api_key = None
 try:
     if "groq" in st.secrets and "api_key" in st.secrets["groq"]:
@@ -184,19 +270,21 @@ except:
 # SIDEBAR
 with st.sidebar:
     st.markdown("<h2>⚙️ Panel de Control</h2>", unsafe_allow_html=True)
-    st.markdown("#### 🔑 Configuración")
+    
+    st.markdown("#### 🔑 Configuracion")
     if not api_key:
         api_key_input = st.text_input("API Key de Groq", type="password", key="api_key_input_groq")
         if api_key_input:
             api_key = api_key_input
         else:
             st.warning("Necesitas API Key de Groq.")
-            st.info("Obtén una en: console.groq.com")
+            st.info("Obten una en: console.groq.com")
     else:
         st.success("API Key configurada ✅")
     
     voice_enabled = st.checkbox("Activar respuestas de voz", value=True)
     st.markdown("---")
+
     st.markdown("#### 📦 Base de Conocimiento")
     st.caption("Carpeta: `documentos/`")
     
@@ -208,13 +296,14 @@ with st.sidebar:
                 with zipfile.ZipFile(uploaded_zip, 'r') as z:
                     z.extractall(DOCS_FOLDER)
                 st.session_state.processed_zip_name = uploaded_zip.name
-                st.toast("✅ Archivos extraídos. Recargando...")
+                st.toast("✅ Archivos extraidos. Recargando...")
                 st.cache_resource.clear()
                 st.rerun()
             except Exception as e:
                 st.error(f"Error al descomprimir: {e}")
 
     st.markdown("---")
+
     st.markdown("#### 📚 Estado")
     
     if st.button("🔄 Recargar Base de Datos", use_container_width=True):
@@ -227,16 +316,19 @@ with st.sidebar:
             for f in st.session_state.loaded_files:
                 st.write(f"📄 {f}")
     else:
-        st.info("🔴 Repositorio Vacío. Añade PDFs.")
+        st.info("🔴 Repositorio Vacio. Anade PDFs.")
 
     st.markdown("---")
+    
     st.markdown("#### 💡 Tips")
     st.markdown('<div class="info-card">Puedes preguntarme sobre los documentos cargados o pedir ayuda para planear clases.</div>', unsafe_allow_html=True)
+
     st.markdown("<br><p style='text-align:center; font-size:0.8rem; color:#9CA3AF;'>Desarrollado por IA Prometeo</p>", unsafe_allow_html=True)
 
 if not api_key:
     st.stop()
 
+# CONEXION CON GROQ
 try:
     client = OpenAI(
         base_url="https://api.groq.com/openai/v1",
@@ -249,7 +341,7 @@ except Exception as e:
 # PROMPTS
 SYSTEM_PROMPT_BASE = """
 Eres **IA Prometeo**, un asistente inteligente, conciso y profesional.
-Tu objetivo es ayudar al usuario a analizar documentos y realizar tareas de planeación o consulta.
+Tu objetivo es ayudar al usuario a analizar documentos y realizar tareas de planeacion o consulta.
 Tono: Profesional, cercano y eficiente.
 """
 
@@ -258,49 +350,50 @@ if st.session_state.get("loaded_files"):
     loaded_files_list_str = "\n".join([f"{i+1}. {fname}" for i, fname in enumerate(st.session_state.loaded_files)])
 
 SYSTEM_PROMPT_PLANNING = f"""
-Eres **IA Prometeo - Experto en Planeación**.
+Eres **IA Prometeo - Experto en Planeacion**.
 
 **ARCHIVOS DISPONIBLES:**
 {loaded_files_list_str}
 -----------------------------------------
 
 **REGLAS:**
-1. Usa solo información del contexto.
-2. Busca patrones como "Unidad", "Módulo", "Bloque".
-3. Si no tienes información, indícalo.
+1. Usa solo informacion del contexto.
+2. Busca patrones como "Unidad", "Modulo", "Bloque".
+3. Si no tienes informacion, indicalo.
 
 **FLUJO:**
-**PASO 1: ACTIVACIÓN**
+
+**PASO 1: ACTIVACION**
 Si el usuario dice "vamos a planear":
 1. Muestra la lista de archivos.
-2. Pregunta: "¿Cuál es el **número** del programa a utilizar?"
+2. Pregunta: "¿Cual es el **numero** del programa a utilizar?"
 
 **PASO 2: LECTURA**
-Cuando el usuario elija un número:
+Cuando el usuario elija un numero:
 1. Identifica el archivo.
 2. Lista las unidades encontradas numeradas.
-3. Pregunta: "¿Qué **número** de unidad(es) vamos a planear?"
+3. Pregunta: "¿Que **numero** de unidad(es) vamos a planear?"
 
 **PASO 3: SESIONES**
-"¿Cuántas **sesiones** en total necesita?"
+"¿Cuantas **sesiones** en total necesita?"
 
 **PASO 4: DIAS**
-"¿Qué **días de la semana** se imparten las clases?"
+"¿Que **dias de la semana** se imparten las clases?"
 
 **PASO 5: CRITERIOS**
-"¿Cuáles son los **criterios de evaluación**?"
+"¿Cuales son los **criterios de evaluacion**?"
 
 **PASO 6: FECHAS**
-"Indica **fecha de inicio** y **fecha de término**."
+"Indica **fecha de inicio** y **fecha de termino**."
 
 **PASO 7: BORRADOR**
 Genera ejemplos.
 
 **PASO 8: FINAL**
-Genera planeación completa.
+Genera planeacion completa.
 """
 
-# INICIALIZACIÓN
+# INICIALIZACION DE SESION
 if "messages" not in st.session_state: 
     st.session_state.messages = []
 
@@ -312,7 +405,7 @@ if "vectorstore" not in st.session_state:
     st.session_state.vectorstore = vectorstore
     st.session_state.loaded_files = loaded_files
 
-# FUNCIONES
+# FUNCIONES AUXILIARES
 def get_audio_button_html(text, key):
     text_clean = text.replace("'", "").replace('"', '').replace("\n", " ")
     return f"""
@@ -350,21 +443,33 @@ def get_context_for_planning(user_input, vectorstore, loaded_files):
 
     if selected_file_index is not None:
         target_filename = loaded_files[selected_file_index]
-        structure_queries = ["Unidades de aprendizaje", "Contenido temático desglosado", "Bloques Módulos Temas", "Índice de contenidos estructura"]
+        
+        structure_queries = [
+            "Unidades de aprendizaje", 
+            "Contenido tematico desglosado", 
+            "Bloques Modulos Temas",
+            "Indice de contenidos estructura"
+        ]
+        
         all_docs = []
         seen_content = set()
         
         try:
             for query in structure_queries:
-                docs = vectorstore.similarity_search(query=query, k=4, filter={"source": target_filename})
+                docs = vectorstore.similarity_search(
+                    query=query, 
+                    k=4, 
+                    filter={"source": target_filename}
+                )
                 for doc in docs:
                     if doc.page_content not in seen_content:
                         all_docs.append(doc)
                         seen_content.add(doc.page_content)
             
             final_docs = all_docs[:12]
+            
             if not final_docs:
-                return f"No se encontró información estructural en {target_filename}.", target_filename
+                return f"No se encontro informacion estructural en {target_filename}.", target_filename
             
             context_text = "\n\n---\n\n".join([f"Fragmento:\n{doc.page_content}" for doc in final_docs])
             return context_text, target_filename
@@ -379,14 +484,14 @@ def get_context_for_planning(user_input, vectorstore, loaded_files):
         except Exception as e:
             return "", None
 
-# CHAT INTERFACE
+# INTERFAZ DE CHAT
 audio_data = None
 
 if MIC_RECORDER_AVAILABLE:
     try:
         audio_data = mic_recorder(
-            start_prompt="🎤 Iniciar Grabación",
-            stop_prompt="🛑 Detener Grabación",
+            start_prompt="🎤 Iniciar Grabacion",
+            stop_prompt="🛑 Detener Grabacion",
             just_once=False,
             key="mic_main_btn"
         )
@@ -406,13 +511,13 @@ if audio_data:
             language="es"
         )
         if transcription.text:
-            st.toast(f"🎤 Escuché: {transcription.text}")
+            st.toast(f"🎤 Escuche: {transcription.text}")
             prompt = transcription.text
             st.session_state.messages.append({"role": "user", "content": prompt})
             
             if "vamos a planear" in prompt.lower():
                 st.session_state.planning_mode = True
-                st.toast("📑 Modo Planeación Activado")
+                st.toast("📑 Modo Planeacion Activado")
 
             current_prompt = SYSTEM_PROMPT_PLANNING if st.session_state.planning_mode else SYSTEM_PROMPT_BASE
             
@@ -427,7 +532,7 @@ if audio_data:
             formatted_messages = [{"role": "system", "content": full_prompt}] + [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
 
             response = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
+                model="llama-3.3-70b-versatile", 
                 messages=formatted_messages
             )
 
@@ -443,7 +548,7 @@ if prompt := st.chat_input("Escribe tu mensaje..."):
 
     if "vamos a planear" in prompt.lower():
         st.session_state.planning_mode = True
-        st.toast("📑 Modo Planeación Activado")
+        st.toast("📑 Modo Planeacion Activado")
 
     current_prompt = SYSTEM_PROMPT_PLANNING if st.session_state.planning_mode else SYSTEM_PROMPT_BASE
 
@@ -459,7 +564,7 @@ if prompt := st.chat_input("Escribe tu mensaje..."):
 
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.3-70b-versatile", 
             messages=formatted_messages
         )
         ai_response = response.choices[0].message.content
