@@ -1,0 +1,9 @@
+streamlit
+openai
+streamlit-mic-recorder
+langchain-community
+langchain-text-splitters
+faiss-cpu
+pypdf
+sentence-transformers
+requests
