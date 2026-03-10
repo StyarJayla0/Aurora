@@ -1,5 +1,5 @@
 import streamlit as st
-from OpenAI import OpenAI
+from openai import openai
 import os
 import glob
 import streamlit.components.v1 as components
